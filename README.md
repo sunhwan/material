@@ -7,8 +7,6 @@ This package provide command line interface for building carbon nanotube
 
 Carbon nanotube
 
-::
-
     ❯ python builder.py tubegen -h
     usage: builder.py tubegen [-h] [--tubegen TUBEGEN] [--chirality [N,N]]
                               [--prefix PREFIX] [--cap]
@@ -21,8 +19,6 @@ Carbon nanotube
       --cap              cap hydrogen if turned on
 
 Graphene
-
-::
 
     ❯ python builder.py graphene -h
     usage: builder.py graphene [-h] [--charmm CHARMM] [--nrings NRINGS] [--cap]
@@ -37,5 +33,17 @@ Graphene
       --dense_defect   favors defects to be near each other when turned on
 
 ## Example
+
+    mkdir -p example/tube
+    cd example/tube
+    python ../../builder.py tubegen --tubegen ../../builder/tubegen-3.4/src/tubegen --chirality 5,2
+    
+![tube](example/tube/tube.png?raw=true "Tube")
+
+    mkdir -p example/graphene
+    cd example/graphene
+    python ../../builder.py graphene --charmm ~/local/charmm/c40b1 --nrings 100 --defect 0
+    
+![graphene](example/graphene/graphene.png?raw=true "Graphene")
 
 
