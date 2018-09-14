@@ -80,7 +80,7 @@ set chirality {chirality[0]},{chirality[1]}
 set units angstrom
 set gutter 1.6735,1.6735,0
 set relax_tube yes
-set cell_count {cell_count[0]},{cell_count[1]},{cell_count[2]}
+set cell_count 1,1,1
 generate
 save {prefix}.pdb
 exit
@@ -263,19 +263,18 @@ def run(argv=sys.argv[1:]):
     subparsers.dest = 'command'
 
     ptubegen = subparsers.add_parser('tubegen')
-    ptubegen.add_argument('--tubegen', default="./tubegen-3.4/src/tubegen")
-    ptubegen.add_argument('--chirality', default=[3, 3], type=csv_list_type)
-    ptubegen.add_argument('--cell_count', default=[1, 1, 1], type=csv_list_type)
-    ptubegen.add_argument('--prefix', default="tube")
-    ptubegen.add_argument('--cap', default=False, action='store_true')
+    ptubegen.add_argument('--tubegen', default="./tubegen-3.4/src/tubegen", help="path to tubegen executable")
+    ptubegen.add_argument('--chirality', default=[3, 3], type=csv_list_type, metavar='[N,N]', help="chirality parameter n, m")
+    ptubegen.add_argument('--prefix', default="tube", help="prefix for output file")
+    ptubegen.add_argument('--cap', default=False, action='store_true', help="cap hydrogen if turned on")
     ptubegen.set_defaults(func=tubegen)
 
     pgraphene = subparsers.add_parser('graphene')
-    pgraphene.add_argument('--charmm', default="charmm")
-    pgraphene.add_argument('--nrings', default=100, type=int)
-    pgraphene.add_argument('--cap', default=False, action='store_true')
-    pgraphene.add_argument('--defect', default=0, type=partial(range_type, min=0, max=1), metavar='[0-1]')
-    pgraphene.add_argument('--dense_defect', default=False, action='store_true')
+    pgraphene.add_argument('--charmm', default="charmm", help="path to CHARMM executable")
+    pgraphene.add_argument('--nrings', default=100, type=int, help="number of rings")
+    pgraphene.add_argument('--cap', default=False, action='store_true', help="cap hydrogen if turned on")
+    pgraphene.add_argument('--defect', default=0, type=partial(range_type, min=0, max=1), metavar='[0-1]', help="fraction of rings to have defect")
+    pgraphene.add_argument('--dense_defect', default=False, action='store_true', help="favors defects to be near each other when turned on")
     pgraphene.set_defaults(func=graphene)
 
     args = parser.parse_args()
