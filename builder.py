@@ -1,10 +1,12 @@
 import argparse
 import sys
 import subprocess as sp
+from math import cos, sin, radians
 from functools import partial
 
 sys.path.append('MoleculeX')
 
+import numpy as np
 from MoleculeX.moleculex import Molecule, Atom
 
 _rtf_header = """
@@ -80,7 +82,7 @@ set chirality {chirality[0]},{chirality[1]}
 set units angstrom
 set gutter 1.6735,1.6735,0
 set relax_tube yes
-set cell_count 1,1,1
+set cell_count 1,1,{cell_count_z}
 generate
 save {prefix}.pdb
 exit
@@ -187,16 +189,64 @@ def tubegen(args):
         for atom in atoms:
             neighbors = [_ for _ in mol.graph.neighbors(atom) if _.element.symbol == 'C']
             if atom.element.symbol == 'C' and len(neighbors) == 2:
-                r0 = [atom.x, atom.y, atom.z]
-                r1 = [neighbors[0].x, neighbors[0].y, neighbors[0].z]
-                r2 = [neighbors[1].x, neighbors[1].y, neighbors[1].z]
-                rc = [(r1[i] + r2[i])/2 for i in range(3)] # (r1 + r2)/2
-                vc = [(r0[i] - rc[i]) for i in range(3)] # r0 - rc
-                norm = sqrt(vc[0]**2 + vc[1]**2 + vc[2]**2)
-                vc = [vc[i] / norm for i in range(3)] # np.linalg.norm(vc)
-                rh = [(vc[i] * 1.2 + r0[i]) for i in range(3)] # vc * 1.2 + r0
+                r0 = np.array([atom.x, atom.y, atom.z])
+                r1 = np.array([neighbors[0].x, neighbors[0].y, neighbors[0].z])
+                r2 = np.array([neighbors[1].x, neighbors[1].y, neighbors[1].z])
+                rc = (r1 + r2)/2
+                vc = (r0 - rc) / np.linalg.norm(r0 - rc)
+                rh = vc * 1.2 + r0
 
                 cap = Atom(name='H', resname=atom.resname, resnr=atom.resnr, x=rh[0], y=rh[1], z=rh[2])
+                mol.add_atom(cap)
+                mol.add_bond(atom, cap)
+
+            if atom.element.symbol == 'C' and len(neighbors) == 1:
+                r0 = np.array([atom.x, atom.y, atom.z])
+                neighbor = neighbors[0]
+                r1 = np.array([neighbor.x, neighbor.y, neighbor.z])
+                neighbor_neighbor = [_ for _ in mol.graph.neighbors(neighbor) if _.element.symbol == 'C' and _ != neighbor].pop()
+                r2 = np.array([neighbor_neighbor.x, neighbor_neighbor.y, neighbor_neighbor.z])
+
+                v1 = r0 - r1
+                v2 = r1 - r2
+                a = np.cross(v1, v2)
+                c = cos(radians(60))
+                s = sin(radians(60))
+                ux, uy, uz = a
+                cp = 1 - c
+                R = np.array(((c + ux**2 * cp, ux * uy * cp - uz * s, ux * uz * cp + uy * s),
+                              (uy * ux * cp + uz * s, c + uy**2 * cp, uy * uz * cp - ux * s),
+                              (uz * ux * cp - uy * s, uz * uy * cp + ux * s, c + uz**2 * cp)))
+                rh1 = np.dot(R, v1.T)
+                rh1 = rh1 / np.linalg.norm(rh1) * 1.2
+
+                a = v1
+                ux, uy, uz = a
+                c = cos(radians(120))
+                s = sin(radians(120))
+                cp = 1 - c
+                R = np.array(((c + ux**2 * cp, ux * uy * cp - uz * s, ux * uz * cp + uy * s),
+                              (uy * ux * cp + uz * s, c + uy**2 * cp, uy * uz * cp - ux * s),
+                              (uz * ux * cp - uy * s, uz * uy * cp + ux * s, c + uz**2 * cp)))
+                rh2 = np.dot(R, rh1.T)
+                rh2 = rh2 / np.linalg.norm(rh2) * 1.2
+
+                rh3 = np.dot(R, rh2.T)
+                rh3 = rh3 / np.linalg.norm(rh3) * 1.2
+
+                rh1 += r0
+                rh2 += r0
+                rh3 += r0
+
+                cap = Atom(name='H', resname=atom.resname, resnr=atom.resnr, x=rh1[0], y=rh1[1], z=rh1[2])
+                mol.add_atom(cap)
+                mol.add_bond(atom, cap)
+
+                cap = Atom(name='H', resname=atom.resname, resnr=atom.resnr, x=rh2[0], y=rh2[1], z=rh2[2])
+                mol.add_atom(cap)
+                mol.add_bond(atom, cap)
+
+                cap = Atom(name='H', resname=atom.resname, resnr=atom.resnr, x=rh3[0], y=rh3[1], z=rh3[2])
                 mol.add_atom(cap)
                 mol.add_bond(atom, cap)
 
@@ -265,6 +315,7 @@ def run(argv=sys.argv[1:]):
     ptubegen = subparsers.add_parser('tubegen')
     ptubegen.add_argument('--tubegen', default="./tubegen-3.4/src/tubegen", help="path to tubegen executable")
     ptubegen.add_argument('--chirality', default=[3, 3], type=csv_list_type, metavar='[N,N]', help="chirality parameter n, m")
+    ptubegen.add_argument('--cell_count_z', default=1, type=int, metavar='N', help="cell count along Z")
     ptubegen.add_argument('--prefix', default="tube", help="prefix for output file")
     ptubegen.add_argument('--cap', default=False, action='store_true', help="cap hydrogen if turned on")
     ptubegen.set_defaults(func=tubegen)
